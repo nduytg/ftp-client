@@ -1,15 +1,16 @@
 Danh sách các hàm/command và phân công:
 
-ls
-cd
-cd
-delete
-dir
-pwd
-mkdir
-help
-put
-pwd
-quit
-send
+USER
+PASS
+PORT
+DELE
+QUIT
+RNFR
+CWS
+LIST/NLIST
+RETR
+REST
+STOR
+MKD
+RMD
 
