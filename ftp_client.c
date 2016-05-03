@@ -6,7 +6,8 @@
 */
 
 /*FTP Client*/
- 
+#include "ftp_client.h"
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <string.h>
@@ -24,13 +25,40 @@
 /*for O_RDONLY*/
 #include<fcntl.h>
 
-
 #define PASSIVE_PORT 21
 #define ACTIVE_PORT 20
 #define PASSIVE 0
 #define ACTIVE 1
 #define BUF_FILE_NAME 255
 //#define BUFSIZ 65535
+
+//Phan code cua Bu
+
+//Lenh help, ?
+void help()
+{
+	printf("####### FTP Client Help ########\n\n");
+	printf(" Cac lenh duoc ho tro \n");
+	printf("help|?\t\t\tmdir\t\t\tuser\n");
+	printf("bye|quit\t\tcd\t\t\tclose|disconnect\n");
+	printf("recv|get\t\tdelete|mdelete\t\tsend|put\n");
+	printf("pwd\t\t\tcdup\t\t\tls\n");
+}
+
+//Lenh bye, quit
+//exit ftp luon
+// QUIT
+void bye();
+
+//Lenh recv/get
+int ftp_recv(int sock);
+
+//Lenh pwd
+// PWD
+int pwd(int sock);
+//------------------
+
+
 
 //Ham getch() viet lai a`?
 int getch() {
@@ -111,18 +139,28 @@ bool active_mode_handler();
 void usage()
 {
 	printf("---------- FTP CLIENT USAGE ----------\n");
-	printf("Plz type as: ./ftp_client [ip | hostname]\n\n");
+	printf("Plz type as: ./ftp_client [remote_ip] [-p] <port>\n\n");
 }
  
 int main(int argc,char *argv[])
 {
 	//######### Xu ly tham so dong lenh o day #####
 	//######### Stub, se con nang cap them ########
-	if(argc != 2)
+	help();
+	if(argc < 2)
 	{
 		//***Them phan xu ly phan biet hostname va IP!!
+		printf("Not enough arguments\n\n");
 		usage();
 		exit(EXIT_FAILURE);
+	}
+	
+	// Tuc co tham so -p (passive mode)
+	bool is_passive = false;
+	if(argc > 2)
+	{
+		is_passive = true;
+		
 	}
 	
 	printf("Trying to connect to %s\n",argv[1]);
@@ -204,6 +242,7 @@ int main(int argc,char *argv[])
 	printf("Connection established, waiting for welcome message...\n");
 	//How to know the end of welcome message: http://stackoverflow.com/questions/13082538/how-to-know-the-end-of-ftp-welcome-message
 	
+	// - Nhan welcome message - !!
 	while((tmpres = recv(sock, buf, BUFSIZ, 0)) > 0)
 	{
 		sscanf(buf,"%d", &codeftp);
@@ -220,6 +259,11 @@ int main(int argc,char *argv[])
 		}
 		memset(buf, 0, tmpres);
 	}
+	
+	
+	//Man hinh huong dan su cmn dung
+	printf("##### Welcome to our FTP CLIENT ####\n");
+	
 	
 	//Send Username
 	char info[50];
@@ -264,11 +308,11 @@ int main(int argc,char *argv[])
 	}
 	printf("%s", buf);
 	
-	printf("Choose passive mode or active mode: \n");
-	printf("  1 - Passvive mode\n");
-	printf("  0 - Active mode\n");
-	printf("Please enter your choice: ");
-	scanf("%d", &mode);
+	//~ printf("Choose passive mode or active mode: \n");
+	//~ printf("  1 - Passvive mode\n");
+	//~ printf("  0 - Active mode\n");
+	//~ printf("Please enter your choice: ");
+	//~ scanf("%d", &mode);
 	
 	//Nen chia thanh 2 phan`
 	//passive_mode_handler()
@@ -276,8 +320,8 @@ int main(int argc,char *argv[])
 	
 	//***Khuc duoi nay bo het vo ham cho gon
 	
-	if (mode == 1) //Passive mode
-	{
+	//~ if (mode == 1) //Passive mode
+	//~ {
 		memset(buf, 0, sizeof buf);
 		sprintf(buf,"PASS \r\n");
 		tmpres = send(sock, buf, strlen(buf), 0);
@@ -441,10 +485,6 @@ int main(int argc,char *argv[])
 				}
 			}	
 		}
-	}
-	else //Active mode
-	{
-		
-	}
+
 }
 
