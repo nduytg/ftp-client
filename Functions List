@@ -1,16 +1,71 @@
 Danh sách các hàm/command và phân công:
 
-USER
-PASS
-PORT
-DELE
-QUIT
-RNFR
-CWS
-LIST/NLIST
-RETR
-REST
-STOR
-MKD
-RMD
+Command tương tác người dùng:
+
++ help [command ]: Print an informative message about the meaning of command If no argument is given, ftp prints a list of the known commands.
++ ? [command ]: A synonym for help.
+
++ bye: Terminate the FTP session with the remote server and exit ftp An end of file will also terminate the session and exit.
++ quit: A synonym for bye
+
++ close: Terminate the FTP session with the remote server, and return to the command interpreter. Any defined macros are erased.
++ disconnect: A synonym for close
+
++ dir [remote-directory ] [local-file ]: Print a listing of the directory contents in the directory, 
+ remote-directory and, optionally, placing the output in local-file If interactive prompting is on, 
+ ftp will prompt the user to verify that the last argument is indeed the target local file for receiving dir output. 
+ If no directory is specified, the current working directory on the remote machine is used. If no local file is specified, or local-file is -, output comes to the terminal.
+
++ get remote-file [local-file ]: Retrieve the remote-file and store it on the local machine. 
+ If the local file name is not specified, it is given the same name it has on the remote machine, 
+ subject to alteration by the current case ntrans and nmap settings. 
+ The current settings for type form mode and structure are used while transferring the file.
+
++ send local-file [remote-file ]: A synonym for put.
++ put local-file [remote-file ]
+ Store a local file on the remote machine. If remote-file is left unspecified, 
+ the local file name is used after processing according to any ntrans or nmap settings in naming the remote file. 
+ File transfer uses the current settings for type format mode and structure.
+ 
++ cd [remote-directory]: Change the working directory on the remote machine to remote-directory
+
++ cdup: Change the remote machine working directory to the parent of the current remote machine working directory.
+
++ pwd: Print the name of the current working directory on the remote machine.
+
++ user user-name [password ] [account ]: Identify yourself to the remote FTP server.
+ If the password is not specified and the server requires it, 
+ ftp will prompt the user for it (after disabling local echo). 
+ If an account field is not specified, and the FTP server requires it, the user will be prompted for it. 
+ If an account field is specified, an account command will be relayed to the remote server 
+ after the login sequence is completed if the remote server did not require it for logging in.
+ Unless ftp is invoked with auto-login disabled, this process is done automatically on initial connection to the FTP server.
+
++ delete [remote-file]: Delete the file remote-file on the remote machine.
+
++ ls [remote-directory ] [local-file ]: Print a listing of the contents of a directory on the remote machine. 
+ The listing includes any system-dependent information that the server chooses to include; for example, 
+  most UNIX systems will produce output from the command `ls' -l . 
+  
++ mdelete [remote-files ]: Delete the remote-files on the remote machine.
+
++ mkdir directory-name: Make a directory on the remote machine.
+
+
+
+Command tương tác qua lại giữa client với FTP Server:
+
+USER: send user name
+PASS: send password
+PORT: khai bao dataport, mode active
+DELE: delete 1 file
+QUIT: dong ket noi
+RNFR: doi ten file
+CWD: thay doi chu muc hien hanh 
+LIST/NLIST: liet ke danh sach tap tin, thu muc
+RETR: download 1 file
+REST: restart download
+STOR: upload 1 file
+MKD: tao thu muc
+RMD: di chuyen thu muc
 
