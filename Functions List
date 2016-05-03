@@ -16,6 +16,7 @@ Command tương tác người dùng:
  ftp will prompt the user to verify that the last argument is indeed the target local file for receiving dir output. 
  If no directory is specified, the current working directory on the remote machine is used. If no local file is specified, or local-file is -, output comes to the terminal.
 
++ recv remote-file [local-file ]: A synonym for get.
 + get remote-file [local-file ]: Retrieve the remote-file and store it on the local machine. 
  If the local file name is not specified, it is given the same name it has on the remote machine, 
  subject to alteration by the current case ntrans and nmap settings. 
