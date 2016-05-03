@@ -1,5 +1,10 @@
 Danh sách các hàm/command và phân công:
 
+Phân cmn Công:
++ Bự: help/?, bye/quit, recv/get, pwd
++ Đại: mdir, cd, cdup, delete, mdelete 
++ Nhỏ: user, close/disconnect, send/put, ls
+
 Command tương tác người dùng:
 
 + help [command ]: Print an informative message about the meaning of command If no argument is given, ftp prints a list of the known commands.
