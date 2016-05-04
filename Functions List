@@ -1,9 +1,9 @@
 Danh sách các hàm/command và phân công:
 
 Phân cmn Công:
-+ Bự: help/?, bye/quit, recv/get, pwd
++ Bự: help/?, bye/quit, recv/get, ls
 + Đại: mdir, cd, cdup, delete, mdelete 
-+ Nhỏ: user, close/disconnect, send/put, ls
++ Nhỏ: user, close/disconnect, send/put, pwd
 
 Command tương tác người dùng:
 
