@@ -22,6 +22,8 @@
 #define SERV_ADDR 	"192.168.127.1"
 #define BUFSIZE 			1024
 
+char g_pwd[PATH_MAX + 1];
+
 int main(int argc, char* argv[])
 {
 	int sockfd;
@@ -116,6 +118,22 @@ int main(int argc, char* argv[])
         goto reEnter; // re-enter username and password
     }
     printf("Server response: %s", buf);
+    memset(buf, 0, sizeof(buf));
+    if(strcmp(argv[1], "-p") == 0 || argc == 1) // passive mode
+    {
+
+    }
+    else
+    {
+    	if(strmp(argv[1], "-a") == 0) // active mode
+    	{
+
+    	}
+    	else
+    	{
+    		printf("Wrong parameters!\nPlease make sure you follow this:\n./ftp  OR  ./ftp [-p or -a]\n");
+    	}
+    }
 
     memset(buf, 0, sizeof(buf));
     memset(username, 0, sizeof(username));
