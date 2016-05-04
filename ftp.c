@@ -19,10 +19,61 @@
 #include<fcntl.h>
 
 #define PORT_FTP 		21
-#define SERV_ADDR 	"192.168.127.1"
+#define SERV_ADDR 	"96.47.72.72"
 #define BUFSIZE 			1024
 
 char current_dir[PATH_MAX + 1];
+
+//Kieu bool
+typedef int bool;
+enum {false, true };
+
+void help()
+{
+	printf("\n");
+	printf("####### FTP Client Help ########\n\n");
+	printf(" Cac lenh duoc ho tro \n");
+	printf("help|?\t\t\tmdir\t\t\tuser\n");
+	printf("bye|quit\t\tcd\t\t\tclose|disconnect\n");
+	printf("recv|get\t\tdelete|mdelete\t\tsend|put\n");
+	printf("pwd\t\t\tcdup\t\t\tls\n");
+}
+
+bool command_handler(int sock, char* cmd)
+{
+	help();
+	int file_handler;	
+	char filename[256];
+	char buf[256];
+	struct stat obj;
+	int size, status;
+	
+	if (strcmp("get",cmd) == 0 || strcmp("recv",cmd))
+	{
+		printf("Enter filename to put to server: ");
+		scanf("%s", filename);
+		file_handler = open(filename, O_RDONLY);
+		if(file_handler == -1)
+		{
+			printf("No such file on the local directory\n\n");
+			exit(EXIT_FAILURE);
+		}
+		
+		strcpy(buf, "put ");
+		strcat(buf, filename);
+		send(sock, buf, 100, 0);
+		stat(filename, &obj);
+		size = obj.st_size;
+		send(sock, &size, sizeof(int), 0);
+		sendfile(sock, file_handler, NULL, size);
+		recv(sock, &status, sizeof(int), 0);
+		
+		if(status)
+			printf("File stored successfully\n");
+		else
+			printf("File failed to be stored to remote machine\n");
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -44,6 +95,7 @@ int main(int argc, char* argv[])
     bzero(&server, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_port = htons(PORT_FTP);
+    
     if ( inet_aton(SERV_ADDR, &server.sin_addr.s_addr) == 0 )
     {
         perror(SERV_ADDR);
@@ -56,8 +108,10 @@ int main(int argc, char* argv[])
 		perror("Connect can't be established");
 		exit(errno);
 	}
+	
     printf("Connected to FTP server!\n");
-    printf("Server information: \n\tIP address: %s\n\tPort: %d\n\n", SERV_ADDR, PORT_FTP);
+    char *servAddr = "96.47.72.72";
+    printf("Server information: \n\tIP address: %s\n\tPort: %d\n\n", servAddr, PORT_FTP);
 
     // Get "Hello?"
     bzero(buf, BUFSIZE);
@@ -137,6 +191,13 @@ int main(int argc, char* argv[])
     		printf("Wrong parameters!\nPlease make sure you follow this:\n./ftp  OR  ./ftp [-p or -a]\n");
     	}
     }
+    
+    //----handle command here----
+    char tmp[256];
+    strcpy(tmp,"get");
+    printf("Test get\n");
+    command_handler(sockfd, tmp);
+    //--------------------
 
     memset(buf, 0, sizeof(buf));
     memset(username, 0, sizeof(username));
@@ -171,6 +232,26 @@ void parseCode(int command_code)
 		case 530:
 			printf("Not logged in.");
 			break;
+		case 120:
+			printf("Service ready in nnn minutes.");
+			break;
+		case 220:
+			printf("Service ready for new user.");
+			break;
+		case 421:
+			printf("Service not available, closing control connection.");
+			printf("This may be a reply to any command if the service knows it must shut down.");
+			break;
+		case 230:
+			printf("User logged in, proceed. Logged out if appropriate.");
+			break;
+		case 331:
+			printf("User name okay, need password.");
+			break;
+		case 332:
+			printf("Need account for login.");
+			break;
 	}
 	printf("\n");
 }
+
