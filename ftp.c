@@ -22,7 +22,7 @@
 #define SERV_ADDR 	"192.168.127.1"
 #define BUFSIZE 			1024
 
-char g_pwd[PATH_MAX + 1];
+char current_dir[PATH_MAX + 1];
 
 int main(int argc, char* argv[])
 {
@@ -119,9 +119,10 @@ int main(int argc, char* argv[])
     }
     printf("Server response: %s", buf);
     memset(buf, 0, sizeof(buf));
+    printf ("FTP user command start...\n");
     if(strcmp(argv[1], "-p") == 0 || argc == 1) // passive mode
     {
-
+    	printf ("%s/%s>", username, current_dir);
     }
     else
     {
