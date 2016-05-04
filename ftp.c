@@ -122,14 +122,14 @@ int main(int argc, char* argv[])
     printf ("FTP user command start...\n");
     if(strcmp(argv[1], "-p") == 0 || argc == 1) // passive mode
     {
-    	printf ("%s@%s>>", username, current_dir); // Example: "vsftp@/home/Downloads>>
+    	printf ("%s@%s>>", username, current_dir); // Example: vsftp@/home/Downloads>>
 
     }
     else
     {
-    	if(strmp(argv[1], "-a") == 0) // active mode
+    	if(strcmp(argv[1], "-a") == 0) // active mode
     	{
-        	printf ("%s@%s>>", username, current_dir); // Example: "vsftp@/home/Downloads>>
+        	printf ("%s@%s>>", username, current_dir); // Example: vsftp@/home/Downloads>>
 
     	}
     	else
