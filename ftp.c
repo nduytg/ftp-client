@@ -76,6 +76,8 @@ int main(int argc, char* argv[])
 			exit (1);
 		}
 		printf("%s", buf);
+		if(buf[3] == ' ')
+			break;
 		//printf("%d\n", buf[3]=='-');
     }
 
@@ -288,13 +290,13 @@ void pwd(int sockfd)
 		return 0;
 	}
 
-	printf("\nOpen file: %s\n", local);
+	printf("\Open file: %s\n", local);
 	 if(mode == 0) // active, server use port 20 for data transmission
 	 {
 		 // create new server address to connect
 		 char port[BUFSIZE];
 		 char buff[BUFSIZE];
-		 int min_port = 1025;
+		 int min_port = 45000;
 		 int max_port = 65535;
 		struct sockaddr_in serv_addr, client_addr;
 		int sockfd_client, sockfd_server, len, nb, fd, i;
@@ -373,6 +375,12 @@ void pwd(int sockfd)
 		}
 		else
 			printf("Server Response: %s\n", buff);
+		sscanf(buff, "%d", &command_code);
+		if(command_code != 200)
+		{
+			parseCode(command_code);
+			return 0;
+		}
 
 		printf("Listen on PORT: %d\n", port_num);
 		if(listen(sockfd_server, 5) < 0)
@@ -414,6 +422,7 @@ void pwd(int sockfd)
 				exit(1);
 			}
 		}
+
 		close(sockfd_server);
 		close(sockfd_client);
 		sockfd_client =0;
