@@ -288,7 +288,7 @@ void pwd(int sockfd)
 		return 0;
 	}
 
-	printf("\Open file: %s\n", local);
+	printf("\nOpen file: %s\n", local);
 	 if(mode == 0) // active, server use port 20 for data transmission
 	 {
 		 // create new server address to connect
