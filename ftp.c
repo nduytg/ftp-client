@@ -4,12 +4,14 @@
  *  Created on: May 4, 2016
  *      Author: nguyenngocduy
  */
-
+#include "ftp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <netdb.h>
+#include <ifaddrs.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -20,11 +22,12 @@
 
 #define PORT_FTP 		21
 #define PASV_PORT 	40000
-#define SERV_ADDR 	"192.168.127.1"
+#define SERV_ADDR 	"17.254.0.1"
 //#define SERV_ADDR 	"96.47.72.72"
 #define BUFSIZE 			1024
 
 char current_dir[PATH_MAX + 1];
+char myIP[16];
 
 int main(int argc, char* argv[])
 {
@@ -61,10 +64,55 @@ int main(int argc, char* argv[])
     printf("Connected to FTP server!\n");
     printf("Server information: \n\tIP address: %s\n\tPort: %d\n\n", SERV_ADDR, PORT_FTP);
 
+
+	struct ifaddrs *ifaddr, *ifa;
+	int family, s;
+	char host[NI_MAXHOST];
+
+	if (getifaddrs(&ifaddr) == -1)
+	{
+		perror("getifaddrs");
+		exit(EXIT_FAILURE);
+	}
+
+	// get interface address
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+	{
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		s=getnameinfo(ifa->ifa_addr,sizeof(struct sockaddr_in),host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+
+		if(ifa->ifa_addr->sa_family==AF_INET)
+		{
+			if (s != 0)
+			{
+				printf("getnameinfo() failed: %s\n", gai_strerror(s));
+				exit(EXIT_FAILURE);
+			}
+			//printf("\tInterface : <%s>\n",ifa->ifa_name );
+			//printf("\t  Address : <%s>\n", host);
+			int c=0;
+			for(int j = 0; j<strlen(host); j++)
+			{
+				if(host[j] == SERV_ADDR[j])
+				{
+					if(host[j] == '.')
+						c++;
+				}
+				if(c == 3)
+				{
+					strcpy(myIP, host);
+				}
+			}
+		}
+	}
+
     // Get "Hello?"
 	bzero(buf, BUFSIZE);
 	recv(sockfd, buf, sizeof(buf), 0);
 	printf("FTP Hello: %s", buf);
+	if(strstr(buf, "220 ") == 0)
     while(buf[3] == '-')
     {
 		bzero(buf, BUFSIZE);
@@ -77,7 +125,10 @@ int main(int argc, char* argv[])
 		}
 		printf("%s", buf);
 		if(buf[3] == ' ')
+		{
+			memset(buf, 0, sizeof buf);
 			break;
+		}
 		//printf("%d\n", buf[3]=='-');
     }
 
@@ -160,6 +211,7 @@ int main(int argc, char* argv[])
     	goto pasv;
 
     disconnect(sockfd);
+	 freeifaddrs(ifaddr);
     memset(buf, 0, sizeof(buf));
     memset(username, 0, sizeof(username));
     memset(pass, 0, sizeof(pass));
@@ -264,22 +316,6 @@ void pwd(int sockfd)
 		 sprintf(stor, "STOR %s/%s\n", current_dir, filename);
 	 else
 		 sprintf(stor, "STOR %s%s\n", current_dir, filename);
-	 //printf("Buffer size: %d\nBuffer length: %d\n", sizeof(buff), strlen(buff));
-
-	 /*
-	 send(sockfd, stor, strlen(stor), 0);
-
-	 memset(stor, 0, sizeof(stor));
-	 recv(sockfd, stor, sizeof(stor), 0);
-
-	 sscanf(stor, "%d", &command_code);
-	 if(command_code != 150)
-	 {
-		 parseCode(command_code);
-		 memset(stor, 0, sizeof(stor));
-		 return 0;
-	 }
-	 */
 
 	char local[PATH_MAX + 1];
 	sprintf(local, "%s/%s", localPath, filename);
@@ -290,30 +326,34 @@ void pwd(int sockfd)
 		return 0;
 	}
 
-	printf("\Open file: %s\n", local);
+	printf("\nOpen file: %s\n", local);
 	 if(mode == 0) // active, server use port 20 for data transmission
 	 {
 		 // create new server address to connect
 		 char port[BUFSIZE];
 		 char buff[BUFSIZE];
-		 int min_port = 45000;
+		 int min_port = 49153;
 		 int max_port = 65535;
 		struct sockaddr_in serv_addr, client_addr;
 		int sockfd_client, sockfd_server, len, nb, fd, i;
-		struct hostent *host;
+		//struct hostent *host;
 
-		if((sockfd_server = socket(AF_INET, SOCK_STREAM, 0) ) < 0)
+		sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
+		if(sockfd_server < 0)
 		{
 			perror("Socket can't be created!\n");
 			fclose(f);
 			return 0;
 		}
 
-		serv_addr.sin_family = AF_INET;
-		serv_addr.sin_addr.s_addr = INADDR_ANY;
+
 		//serv_addr.sin_port = htons(20);
 		//inet_aton("192.168.127.2", &serv_addr.sin_addr.s_addr);
-		memset(&serv_addr.sin_zero, 0, 8);
+		bzero((char*) &serv_addr, sizeof(serv_addr));
+		serv_addr.sin_family = AF_INET;
+		//serv_addr.sin_addr.s_addr = INADDR_ANY;
+		serv_addr.sin_addr.s_addr = inet_addr(myIP);
+		// memset(&serv_addr.sin_zero, 0, 8);
 
 		len = sizeof(client_addr);
 		int port_num=3425;
@@ -322,7 +362,7 @@ void pwd(int sockfd)
 		{
 			serv_addr.sin_port = htons(i);
 
-			if(bind(sockfd_server, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr) >= 0) )
+			if(bind(sockfd_server, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0)
 			{
 				printf("FTP client receive data port: %d\n", i);
 				port_num = i;
@@ -331,23 +371,10 @@ void pwd(int sockfd)
 		}
 
 		memset(buff, 0, sizeof(buff));
-		//memset(port, 0, sizeof(port));
-		/*
-		struct sockaddr_storage addr;
-		socklen_t l;
-		getpeername(sockfd_server, (struct sockaddr*) &addr, &l);
-		struct sockaddr_in *s = (struct sockaddr_in *) &addr;
-		int data_port = ntohs(s->sin_port);
-		inet_ntop(AF_INET, &s->sin_addr, buff, sizeof(buff));
-		printf("FTP Client IP address: %s\nPort: %d\n", buff, data_port);
-		*/
-		sprintf(buff, "%s", inet_ntoa(serv_addr.sin_addr));
-		//sprintf(buff, "192.168.127.2");
-		/*if ( connect(sockfd_server, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) != 0 )
-		{
-			perror("Connect can't be established");
-			exit(errno);
-		}*/
+		// put interface ip address into buff.
+		sprintf(buff, "%s", myIP);
+		//sprintf(buff, "%s", inet_ntoa(serv_addr.sin_addr));
+
 		for (int j = 0; j <strlen(buff); j++)
 		{
 			if(buff[j] == '.')
@@ -375,6 +402,7 @@ void pwd(int sockfd)
 		}
 		else
 			printf("Server Response: %s\n", buff);
+
 		sscanf(buff, "%d", &command_code);
 		if(command_code != 200)
 		{
@@ -383,7 +411,8 @@ void pwd(int sockfd)
 		}
 
 		printf("Listen on PORT: %d\n", port_num);
-		if(listen(sockfd_server, 5) < 0)
+		int lis = listen(sockfd_server, 5);
+		if(lis < 0)
 		{
 			perror("Can't listen on this socket server");
 			fclose(f);
@@ -433,6 +462,8 @@ void pwd(int sockfd)
 	 {
 
 	 }
+
 	 fclose(f);
 	 return 1;
  }
+

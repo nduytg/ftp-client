@@ -11,7 +11,6 @@
 void parseCode(int command_code);
 void pwd();
 int disconnect(int sockfd);
-int put(int sockfd);
 int put(int sockfd, char filename[], char localPath[], int mode);
 
 
