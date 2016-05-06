@@ -13,6 +13,9 @@ void parseCode(int command_code);
 void pwd();
 int disconnect(int sockfd);
 int put(int sockfd, char filename[], char localPath[], int mode);
+int Send_cmd (char* s1, char* s2, int sock_fd);
+int Reply_cmd(int sock_fd);
+void Pasre (char s1[256], int sock_fd)  //s1 la lenh nhap tu nguoi dung
 
 
 void help();

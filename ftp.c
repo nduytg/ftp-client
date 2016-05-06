@@ -467,3 +467,124 @@ void pwd(int sockfd)
 	 return 1;
  }
 
+//Ham send cmd
+int Send_cmd (char* s1, char* s2, int sock_fd)     //s1 is cmd, s2 i path (or filename)
+{
+	char buff_to_send[256];
+	int send_err;
+	
+	if (s1 != NULL)
+	{
+		strcpy(buff_to_send, s1);
+		
+		if (s2 != NULL)
+		{
+			strcat(buff_to_send, " ");
+			strcat(buff_to_send, s2);
+			strcat(buff_to_send, "\r\n");
+			send_err = send(sock_fd, buff_to_send, strlen(buff_to_send), 0);
+		}
+		else
+		{
+			strcat(buff_to_send, " ");
+			strcat(buff_to_send, "\r\n");
+			send_err = send(sock_fd, buff_to_send, strlen(buff_to_send), 0);
+		}
+	}
+	else
+	{
+		strcat(buff_to_send, " ");
+		strcat(buff_to_send, "\r\n");
+		send_err = send(sock_fd, buff_to_send, strlen(buff_to_send), 0);
+	}
+	
+	if (send_err < 0)
+	{
+		printf("Send Error!!!\n");
+	}
+	return send_err;
+}
+
+//Ham nhan reply tu server
+int Reply_cmd(int sock_fd)
+{
+	int code = 0, count = 0;
+	char buff_to_recv[512];
+	
+	count = recv(sock_fd, buff_to_recv, 510, 0);
+	
+	if (count > 0)
+	{
+		sscanf(buff_to_recv, "%d", &code);
+	}
+	else
+	{
+		return 0;
+	}
+	
+	while (1)
+	{
+		if (count <= 0)
+		{
+			break;
+		}
+		buff_to_recv[count] = '\0';
+		printf("Server response: %s", buff_to_recv);
+		count = recv(sock_fd, buff_to_recv, 510, 0);
+	}
+	return code;
+}
+
+//Ham phan tich cau lenh nguoi dung nhap vao
+void Pasre (char s1[256], int sock_fd)  //s1 la lenh nhap tu nguoi dung
+{
+	char temp[256];
+	char* pch;
+	char* cmd;
+	char* path;
+	
+	strcpy(temp, s1);
+	printf("%s\n", temp);
+	
+	if (strstr(temp, " ") == NULL)
+	{
+		cmd = (char*) malloc (sizeof(temp));
+		strcpy(cmd, temp);
+		printf("%s\n", cmd);
+	}
+	else
+	{
+		pch = strtok(temp, " ");
+		cmd = (char*) malloc (sizeof(pch));
+		strcpy(cmd, pch);
+	
+		pch = strtok(NULL, " ");
+		path = (char*) malloc (sizeof(pch));
+		strcpy(path, pch);
+	}
+	
+	if (strcmp(cmd, "cd") == 0)
+	{
+		Send_cmd("CWD", path, sock_fd);
+		Reply_cmd(sock_fd);
+	}
+	if (strcmp(cmd, "cdup") == 0)
+	{
+		printf("%s\n", cmd);
+		Send_cmd("CDUP", NULL, sock_fd);
+		Reply_cmd(sock_fd);
+	}
+	if (strcmp(cmd, "mkdir") == 0)
+	{
+		Send_cmd("MKD", path, sock_fd);
+		Reply_cmd(sock_fd);
+	}
+	if (strcmp(cmd, "delete") == 0)
+	{
+		Send_cmd("DELE", path, sock_fd);
+		Reply_cmd(sock_fd);
+	}
+	if (strcmp(cmd, "MDELE") == 0)
+	{
+	}
+}
