@@ -22,8 +22,8 @@
 
 #define PORT_FTP 		21
 #define PASV_PORT 	40000
-#define SERV_ADDR 	"17.254.0.1"
-//#define SERV_ADDR 	"96.47.72.72"
+//#define SERV_ADDR 	"17.254.0.1"
+#define SERV_ADDR 	"96.47.72.72"
 #define BUFSIZE 			1024
 
 char current_dir[PATH_MAX + 1];
@@ -32,9 +32,10 @@ char myIP[16];
 int main(int argc, char* argv[])
 {
 	int sockfd;
-	struct sockaddr_in server;
+	struct sockaddr_in server, pasv_mode;
 	char buf[BUFSIZE];
 	int command_code;  // indicate message code, such as: 220, 200, 331
+	char command[256];
 
 	// Create socket for client
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -181,16 +182,61 @@ int main(int argc, char* argv[])
         goto reEnter; // re-enter username and password
     }
     printf("Server response: %s", buf);
+
     memset(buf, 0, sizeof(buf));
     printf ("FTP user command start...\n");
-    pwd(sockfd);
-    printf("Current Directory: %s\n", current_dir);
-    if(argc == 2)
+  
+	if(argc == 2)
 		if(strcmp(argv[1], "-p") == 0) // passive mode
 		{
 			pasv:
+			
+			while(strstr(buf, "230 ") == 0)
+			{
+				memset(buf, 0, sizeof buf);
+				recv(sockfd, buf, sizeof buf, 0);
+				printf("Server response: %s", buf);
+			}
+			
+			//get port
+			int a1, a2, a3, a4, p1, p2, dataPort;
+			Send_cmd("PASV", NULL, sockfd);
+			result = recv(sockfd, buf, BUFSIZE, 0);
+			printf("Server reponse: %s\n", buf);
+			sscanf (buf, "227 Entering Passive Mode (%d, %d, %d, %d, %d, %d)", &a1, &a2, &a3, &a4, &p1, &p2);
+			dataPort = p1 * 256 + p2;
+			
+			//connect
+            int s = socket(AF_INET, SOCK_STREAM, 0);
+			if (s < 0)
+			{
+				perror("Socket can't be created");
+				exit(errno);
+			}
+			bzero(&pasv_mode, sizeof(pasv_mode));
+			pasv_mode.sin_family = AF_INET;
+            pasv_mode.sin_port = htons(dataPort);
+			if (inet_aton(SERV_ADDR, &pasv_mode.sin_addr.s_addr) == 0)
+			{
+				perror(SERV_ADDR);
+				exit(errno);
+			}
+			if (connect(s, (struct sockaddr*)&pasv_mode, sizeof(pasv_mode)) != 0 )
+			{
+					perror("Connect can't be established");
+					exit(errno);
+			}
+			
+			memset(buf, 0, sizeof buf);
+			printf("Passive mode is accepted with port %d.\n", dataPort);
+			result = recv(s, buf, BUFSIZE, 0);
+			printf("%s\n", buf);
+			
+			char tmp[256];
+			strcpy(tmp, "cd pub");
+			Pasre(tmp, s);
+			
 			printf ("%s@%s: %s >> ", username, username, current_dir); // Example: vsftp@vsftp: /home/Downloads >>
-
 		}
 		else
 		{
@@ -466,6 +512,35 @@ void pwd(int sockfd)
 	 fclose(f);
 	 return 1;
  }
+ 
+void cd (int sock_fd, char* s1)
+{
+	Send_cmd("CWD", s1, sock_fd);
+	Reply_cmd(sock_fd);
+}
+
+void cdup (int sock_fd)
+{
+	Send_cmd("CDUP", NULL, sock_fd);
+	Reply_cmd(sock_fd);
+}
+
+void MKDIR (int sock_fd, char* s1)
+{
+	Send_cmd("MKD", s1, sock_fd);
+	Reply_cmd(sock_fd);
+}
+
+void delete (int sock_fd, char* s1)
+{
+	Send_cmd("DELE", s1, sock_fd);
+	Reply_cmd(sock_fd);
+}
+
+void RMDIR (int sock_fd, char* s1)
+{
+	
+}
 
 //Ham send cmd
 int Send_cmd (char* s1, char* s2, int sock_fd)     //s1 is cmd, s2 i path (or filename)
@@ -544,13 +619,11 @@ void Pasre (char s1[256], int sock_fd)  //s1 la lenh nhap tu nguoi dung
 	char* path;
 	
 	strcpy(temp, s1);
-	printf("%s\n", temp);
 	
 	if (strstr(temp, " ") == NULL)
 	{
 		cmd = (char*) malloc (sizeof(temp));
 		strcpy(cmd, temp);
-		printf("%s\n", cmd);
 	}
 	else
 	{
@@ -565,26 +638,22 @@ void Pasre (char s1[256], int sock_fd)  //s1 la lenh nhap tu nguoi dung
 	
 	if (strcmp(cmd, "cd") == 0)
 	{
-		Send_cmd("CWD", path, sock_fd);
-		Reply_cmd(sock_fd);
+		cd(sock_fd, path);
 	}
 	if (strcmp(cmd, "cdup") == 0)
 	{
-		printf("%s\n", cmd);
-		Send_cmd("CDUP", NULL, sock_fd);
-		Reply_cmd(sock_fd);
+		cdup(sock_fd);
 	}
 	if (strcmp(cmd, "mkdir") == 0)
 	{
-		Send_cmd("MKD", path, sock_fd);
-		Reply_cmd(sock_fd);
+		MKDIR(sock_fd, path);
 	}
 	if (strcmp(cmd, "delete") == 0)
 	{
-		Send_cmd("DELE", path, sock_fd);
-		Reply_cmd(sock_fd);
+		delete(sock_fd, path);
 	}
-	if (strcmp(cmd, "MDELE") == 0)
+	if (strcmp(cmd, "rmdir") == 0)
 	{
+		RMDIR(sock_fd, path);
 	}
 }

@@ -1,21 +1,25 @@
-/*
- * ftp.h
- *
- *  Created on: May 4, 2016
- *      Author: nguyenngocduy
- */
-
 #ifndef FTP_H_
 #define FTP_H_
+
+
+//Kieu bool
+typedef int bool;
+enum {false, true };
 
 bool command_handler(int sock, char* cmd);
 void parseCode(int command_code);
 void pwd();
 int disconnect(int sockfd);
 int put(int sockfd, char filename[], char localPath[], int mode);
+void cd (int sock_fd, char* s1);
+void cdup (int sock_fd);
+void MKDIR (int sock_fd, char* s1);
+void delete (int sock_fd, char* s1);
+void RMDIR (int sock_fd, char* s1);
+
 int Send_cmd (char* s1, char* s2, int sock_fd);
 int Reply_cmd(int sock_fd);
-void Pasre (char s1[256], int sock_fd)  //s1 la lenh nhap tu nguoi dung
+void Pasre (char s1[256], int sock_fd);  //s1 la lenh nhap tu nguoi dung
 
 
 void help();
