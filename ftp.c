@@ -182,6 +182,12 @@ int main(int argc, char* argv[])
         goto reEnter; // re-enter username and password
     }
     printf("Server response: %s", buf);
+    while(strstr(buf, "230 ") == 0)
+	{
+		memset(buf, 0, sizeof buf);
+		recv(sockfd, buf, sizeof buf, 0);
+		printf("Server response: %s", buf);
+	}
 
     memset(buf, 0, sizeof(buf));
     printf ("FTP user command start...\n");
@@ -189,24 +195,30 @@ int main(int argc, char* argv[])
 	if(argc == 2)
 		if(strcmp(argv[1], "-p") == 0) // passive mode
 		{
+			char dest_ip[20];
+			struct hostent* host_ent;
+			int a1, a2, a3, a4, p1, p2, dataPort;
+			
 			pasv:
 			
-			while(strstr(buf, "230 ") == 0)
-			{
-				memset(buf, 0, sizeof buf);
-				recv(sockfd, buf, sizeof buf, 0);
-				printf("Server response: %s", buf);
-			}
 			
-			//get port
-			int a1, a2, a3, a4, p1, p2, dataPort;
+			
+			//get port, ip
 			Send_cmd("PASV", NULL, sockfd);
 			result = recv(sockfd, buf, BUFSIZE, 0);
 			printf("Server reponse: %s\n", buf);
 			sscanf (buf, "227 Entering Passive Mode (%d, %d, %d, %d, %d, %d)", &a1, &a2, &a3, &a4, &p1, &p2);
 			dataPort = p1 * 256 + p2;
+			sprintf(dest_ip, "%d.%d.%d.%d", a1, a2, a3, a4);
+			printf("%s\n", dest_ip);
 			
 			//connect
+			if ((host_ent = gethostbyname(dest_ip)) == NULL)
+			{
+				perror("gethostbyname");
+				return 0;
+			}
+			
             int s = socket(AF_INET, SOCK_STREAM, 0);
 			if (s < 0)
 			{
@@ -216,11 +228,7 @@ int main(int argc, char* argv[])
 			bzero(&pasv_mode, sizeof(pasv_mode));
 			pasv_mode.sin_family = AF_INET;
             pasv_mode.sin_port = htons(dataPort);
-			if (inet_aton(SERV_ADDR, &pasv_mode.sin_addr.s_addr) == 0)
-			{
-				perror(SERV_ADDR);
-				exit(errno);
-			}
+			pasv_mode.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *)host_ent->h_addr)));
 			if (connect(s, (struct sockaddr*)&pasv_mode, sizeof(pasv_mode)) != 0 )
 			{
 					perror("Connect can't be established");
