@@ -1,6 +1,8 @@
 /*
-	FTP Client
-	* 1312084 - 1312086 - 1312110
+ * ftp.c
+ *
+ *  Created on: May 4, 2016
+ *      Author: nguyenngocduy
  */
 
 #include "ftp.h"
@@ -19,9 +21,15 @@
 #include <sys/sendfile.h>
 #include <fcntl.h>
 
-
+//"96.47.72.72"
 #define PORT_FTP 		21
+#define SERV_ADDR 	"192.168.84.130"
 #define BUFSIZE 			1024
+
+#define PASV_PORT 	40000
+//#define SERV_ADDR 	"17.254.0.1"
+//#define SERV_ADDR 	"96.47.72.72"
+//#define BUFSIZE 			1024
 
 char current_dir[PATH_MAX + 1];
 char myIP[16];
@@ -29,56 +37,42 @@ char svIP[16];
 int svPassivePort;
 int mode;		//Mode active: 0, Mode passive: 1
 int dataSock;
-char SERV_ADDR[16];
-
 
 int main(int argc, char* argv[])
 {
 	//Kiem tra mode active hay passive
-	if(argc >= 2 && (strcmp(argv[1],"-p") == 0) )
+	if(argc < 2 || (argc >= 2 && (strcmp(argv[1],"-p") == 0)))
 	{
-		//Mode passive
 		mode = 1;
 		printf("Passive mode!\n");
 	}
-	else if (argc >= 2 && (strcmp(argv[1],"-a") == 0))
+	else
 	{
-		//Mode active
 		mode = 0;
 		printf("Active mode!\n");
 	}
-	else
-	{
-		printf("Usage - Plz type in as: ./ftp -p ip OR ./ftp -a ip\n");
-		exit(EXIT_FAILURE);
-	}
-	
-	strcpy(SERV_ADDR,argv[2]);
-	printf("Test, server addr: %s\n",SERV_ADDR);
 	
 	int sockfd;
 	struct sockaddr_in server;
 	char buf[BUFSIZE];
 	int command_code;  // indicate message code, such as: 220, 200, 331
 
-
-	//---- Create command socket for client -----
+	// Create socket for client
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("Socket can't be created");
 		exit(errno);
 	}
 
-	printf("Command socket was created...\n");
+	printf("Client socket was created...\n");
 
 	// Create information for sockaddr_in dest
     bzero(&server, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_port = htons(PORT_FTP);
-    
     if ( inet_aton(SERV_ADDR, &server.sin_addr.s_addr) == 0 )
     {
-        perror(EXIT_FAILURE);
+        perror(SERV_ADDR);
         exit(errno);
     }
 
@@ -86,11 +80,11 @@ int main(int argc, char* argv[])
     if ( connect(sockfd, (struct sockaddr*)&server, sizeof(server)) != 0 )
 	{
 		perror("Connect can't be established");
-		exit(EXIT_FAILURE);
+		exit(errno);
 	}
     printf("Connected to FTP server!\n");
     printf("Server information: \n\tIP address: %s\n\tPort: %d\n\n", SERV_ADDR, PORT_FTP);
-	//-----------------------------
+
 
 	struct ifaddrs *ifaddr, *ifa;
 	int family, s;
@@ -117,7 +111,8 @@ int main(int argc, char* argv[])
 				printf("getnameinfo() failed: %s\n", gai_strerror(s));
 				exit(EXIT_FAILURE);
 			}
-
+			//printf("\tInterface : <%s>\n",ifa->ifa_name );
+			//printf("\t  Address : <%s>\n", host);
 			int c=0;
 			for(int j = 0; j<strlen(host); j++)
 			{
@@ -134,13 +129,11 @@ int main(int argc, char* argv[])
 		}
 	}
 
-    // Get "Hello"
+    // Get "Hello?"
 	bzero(buf, BUFSIZE);
 	recv(sockfd, buf, sizeof(buf), 0);
 	printf("FTP Hello: %s", buf);
 	if(strstr(buf, "220 ") == 0)
-	
-	//Vong lap xu ly hello strings
     while(buf[3] == '-')
     {
 		bzero(buf, BUFSIZE);
@@ -157,6 +150,7 @@ int main(int argc, char* argv[])
 			memset(buf, 0, sizeof buf);
 			break;
 		}
+		//printf("%d\n", buf[3]=='-');
     }
 
     // User type username and send it to server
@@ -182,14 +176,17 @@ int main(int argc, char* argv[])
     	exit(1);
     }
     printf("Server response: %s", buf);
+    //memset(username, 0, sizeof(username));
 
     // User type password and send it to server
     memset(buf, 0, sizeof(buf));
     sprintf(buf, "Password [%s]: ", username);
     sprintf(pass, "%s", getpass(buf));
+    //scanf("%s", pass);
 
     memset(buf, 0, sizeof(buf));
     sprintf(buf, "PASS %s\r\n", pass);
+    //printf("Buffer: %s\n", buf);
     result = send(sockfd, buf, strlen(buf), 0);
 
     memset(buf, 0, sizeof(buf));
@@ -224,9 +221,9 @@ int main(int argc, char* argv[])
     if (mode == 1)
     {
 		//Passive
-
+		//memset(buf, 0, sizeof(buf));
 		sprintf(buf, "PASV\r\n", pass);
-
+		//printf("Buffer: %s\n", buf);
 		result = send(sockfd, buf, strlen(buf), 0);
 
 		memset(buf, 0, sizeof(buf));
@@ -248,6 +245,7 @@ int main(int argc, char* argv[])
 		server.sin_family = AF_INET;
 		server.sin_port = htons(svPort);
 		
+		printf("Track 1\n");
 		if ( inet_aton(SERV_ADDR, &server.sin_addr.s_addr) == 0 )
 		{
 			perror(SERV_ADDR);
@@ -255,41 +253,44 @@ int main(int argc, char* argv[])
 		}
 
 		// Connect to server
+		printf("Track 2\n");
 		if ( connect(dataSock, (struct sockaddr*)&server, sizeof(server)) != 0 )
 		{
 			perror("Connect can't be established");
 			exit(errno);
 		}
-		
+		printf("Track 3\n");
 		printf("Connected to Server data port!\n");
 		printf("Connection information: \n\tIP address: %s\n\tPort: %d\n\n", SERV_ADDR, svPort);	
 	}
 	else if (mode == 0)
     {
-		//***Chua test cai nay!!!
 		// create new server address to connect
-		char port[BUFSIZE];
-		char buff[BUFSIZE];
-		int min_port = 49153;
-		int max_port = 65535;
+		 char port[BUFSIZE];
+		 char buff[BUFSIZE];
+		 int min_port = 49153;
+		 int max_port = 65535;
 		struct sockaddr_in serv_addr, client_addr;
 		int sockfd_client, sockfd_server, len, nb, fd, i;
-
+		//struct hostent *host;
 
 		sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
 		if(sockfd_server < 0)
 		{
 			perror("Socket can't be created!\n");
-
+			//fclose(f);
 			return 0;
 		}
 
-
+		//serv_addr.sin_port = htons(20);
+		//inet_aton("192.168.127.2", &serv_addr.sin_addr.s_addr);
 		bzero((char*) &serv_addr, sizeof(serv_addr));
 		serv_addr.sin_family = AF_INET;
+		//serv_addr.sin_addr.s_addr = INADDR_ANY;
 		serv_addr.sin_addr.s_addr = inet_addr(myIP);
+		// memset(&serv_addr.sin_zero, 0, 8);
+
 		len = sizeof(client_addr);
-		
 		int port_num=3425;
 
 		for( i = min_port; i <= max_port; i++)
@@ -305,7 +306,9 @@ int main(int argc, char* argv[])
 		}
 
 		memset(buff, 0, sizeof(buff));
+		// put interface ip address into buff.
 		sprintf(buff, "%s", myIP);
+		//sprintf(buff, "%s", inet_ntoa(serv_addr.sin_addr));
 
 		for (int j = 0; j <strlen(buff); j++)
 		{
@@ -322,13 +325,14 @@ int main(int argc, char* argv[])
 		if(send(sockfd, port, strlen(port), 0) < 0)
 		{
 			perror("Send error!");
-
+			//fclose(f);
 			return 0;
 		}
-
+		//memset(buff, 0, sizeof(buff));
 		if (recv(sockfd, buff, sizeof(buff), 0) < 0)
 		{
 			perror("Receive error!");
+			//fclose(f);
 			return 0;
 		}
 		else
@@ -346,29 +350,46 @@ int main(int argc, char* argv[])
 		if(lis < 0)
 		{
 			perror("Can't listen on this socket server");
-
+			//fclose(f);
 			return 0;
 		}
 	}
     
+    
     printf ("FTP user command start...\n");
     pwd(sockfd);
     printf("Current Directory: %s\n", current_dir);
-	
-	
-	//--------- Vong lap xu ly cmd -----------
-	//out khi nhan lenh bye/quit!!
-	char cmd[100];
-	while(1)
-	{
-		
-		printf ("%s@%s: %s >> ", username, username, current_dir);
-		printf("Your command: ");
-		memset(cmd, 0, sizeof(cmd));
-		scanf ("%s", cmd);
-		command_handler(sockfd,cmd);
-	}
+    
+    /*
+    if(argc == 2)
+		if(strcmp(argv[1], "-p") == 0) // passive mode
+		{
+			pasv:
+			printf ("%s@%s: %s >> ", username, username, current_dir); // Example: vsftp@vsftp: /home/Downloads >>
 
+		}
+		else
+		{
+			if(strcmp(argv[1], "-a") == 0) // active mode
+			{
+				printf ("%s@%s: %s >> ", username, username, current_dir); // Example: vsftp@vsftp: /home/Downloads >>
+				if(!put(sockfd, "Lee_lap.txt", "/media/nguyenngocduy/Data", 0))
+				{
+					printf("Transmission failed\n");
+				}
+			}
+			else
+			{
+				printf("Wrong parameters!\nPlease make sure you follow this:\n./ftp  OR  ./ftp [-p or -a]\n");
+			}
+		}
+    else // argc = 1
+    	goto pasv;
+
+	*/
+	
+	//command_handler(sockfd,"get");
+	command_handler(sockfd,"ls");
 	//put(sockfd, "README.TXT", "/home/nduytg/", 0);
 
     disconnect(sockfd);
@@ -381,7 +402,9 @@ int main(int argc, char* argv[])
 }
 
 
-int put(int sockfd, char filename[], char localPath[])
+//Khoi tao data channel de gui nhan du lieu
+// Dung cho cac ham can goi lenh port len truoc roi moi nhan du lieu: get, put, ls
+int put(int sockfd, char filename[], char localPath[], int mode) // 0 active, 1 passive
  {
 	char stor[BUFSIZE + 1];
 	int command_code;
@@ -415,7 +438,7 @@ int put(int sockfd, char filename[], char localPath[])
 		return 0;
 	}
 	
-
+	//memset(buff, 0, sizeof(buff));
 	if (recv(sockfd, buff, sizeof(buff), 0) < 0)
 	{
 		perror("Receive error!");
@@ -431,6 +454,8 @@ int put(int sockfd, char filename[], char localPath[])
 		parseCode(command_code);
 		return 0;
 	}
+	
+	
 	
 	if(mode == 1) // passive
 	{
@@ -459,11 +484,13 @@ void pwd(int sockfd)
 {
 	char buff[BUFSIZE];
 	int command_code;
-	
 	sprintf(buff, "PWD\r\n");
+	// printf("%s\n", buff);
 	send(sockfd, buff, strlen(buff), 0);
+	// printf("Send successful\n");
 	memset(buff, 0, sizeof(buff));
 	recv(sockfd, buff, BUFSIZE, 0);
+	// printf("Server response: %s\n", buff);
 
 	sscanf(buff, "%d", &command_code);
 	if(command_code != 257)
@@ -480,8 +507,9 @@ void pwd(int sockfd)
 			//current_dir[i-4] = '\n';
 			break;
 	}
-	printf("%s\n", current_dir);
+	// printf("%s\n", current_dir);
 	memset(buff, 0, sizeof(buff));
+	// return current_dir;
 }
 
 
@@ -535,7 +563,7 @@ int ftp_recv(int sock, char *arg1, char *arg2)	//RETR
 	
 	while(1)
 	{
-		file_handler = open(filename, O_CREAT | O_EXCL | O_WRONLY, 0777);
+		file_handler = open(filename, O_CREAT | O_EXCL | O_WRONLY, 0666);
 		
 		if(file_handler == -1)
 		{
@@ -560,11 +588,15 @@ void bye(int sock)		//QUIT
 	int size, code;
 	strcpy(buf, "QUIT\r\n");
 	send(sock, buf, 100, 0);
+	recv(sock, &size, sizeof(int), 0);
 	
-	printf("FTP Client will exit\n");
-	exit(EXIT_SUCCESS);
+	sscanf(buf, "%d", &code);
+	parseCode(code);
+	if (code == 221)
+		exit(EXIT_SUCCESS);
 }
 
+//ls [remote-directory ] [local-file ]
 int ls(int sockfd, char *arg1, char *arg2)		//LIST
 {	
 	char *file_buffer;
@@ -584,17 +616,23 @@ int ls(int sockfd, char *arg1, char *arg2)		//LIST
 	//sprintf(buff, "LIST %s %s\r\n", remote_directory, local_file);
 	sprintf(buf, "LIST\r\n");
 	
+	//printf("Track 1\n");
 	if(send(sockfd, buf, strlen(buf), 0) < 0)
 	{
 		perror("Send LIST error");
 		return 0;
 	}
+	//printf("Track 2\n");
+	
+	printf("Mode: %d\n",mode);
 	
 	if(mode == 1)
 	{
 		recv(sockfd, &size, sizeof(int), 0);
+		//char *buf = (char*)malloc(size + 1);
 		recv(sockfd, buf, size, 0);
 		printf("Server response: %s\n",buf);
+		//free(buf);
 	}
 
 	recv(dataSock, &size, sizeof(int), 0);
@@ -613,31 +651,9 @@ int ls(int sockfd, char *arg1, char *arg2)		//LIST
 	return true;
 }
 
-void command_handler(int sock, char* cmd)
+bool command_handler(int sock, char* cmd)
 {
-	char temp[256];
-	char* pch;
-
-	char* path;
-	
-	strcpy(temp, cmd);
-	
-	if (strstr(temp, " ") == NULL)
-	{
-		cmd = (char*) malloc (sizeof(temp));
-		strcpy(cmd, temp);
-	}
-	else
-	{
-		pch = strtok(temp, " ");
-		cmd = (char*) malloc (sizeof(pch));
-		strcpy(cmd, pch);
-	
-		pch = strtok(NULL, " ");
-		path = (char*) malloc (sizeof(pch));
-		strcpy(path, pch);
-	}
-	
+	help();
 	printf("\nCmd get: %s\n",cmd);
 	
 	if (strcmp("get",cmd) == 0 || strcmp("recv",cmd) == 0)
@@ -649,50 +665,20 @@ void command_handler(int sock, char* cmd)
 	{
 		bye(sock);
 	}
-	else if (strcmp("pwd",cmd) == 0 )
-	{
-		pwd(sock);
-	}
 	else if (strcmp("ls",cmd) == 0)
 	{
 		ls(sock,NULL,NULL);
 	}
-	else if (strcmp(cmd, "cd") == 0)
-	{
-		cd(sock, path);
-	}
-	else if (strcmp(cmd, "cdup") == 0)
-	{
-		cdup(sock);
-	}
-	else if (strcmp(cmd, "mkdir") == 0)
-	{
-		MKDIR(sock, path);
-	}
-	else if (strcmp(cmd, "delete") == 0)
-	{
-		delete(sock, path);
-	}
-	else if (strcmp(cmd, "rmdir") == 0)
-	{
-		RMDIR(sock, path);
-	}
-	else if (strcmp(cmd,"help") == 0)
-	{
-		printf("Khong ho tro lenh nay: %s!\n",cmd);
-		help();
-	}
 	else
-	{
-		printf("Khong ho tro lenh nay: %s!\n",cmd);
-		help();
-	}
+		printf("Khong bat duoc!\n");
+		//help();
 }
 
  int disconnect(int sockfd)
 {
 	char buff[6];
-
+	//memset(buff, 0, sizeof(buff));
+	//sprintf(buff, "QUIT\n" );
 	sprintf(buff, "QUIT\r\n");
 	send(sockfd, buff, strlen(buff) + 1, 0);
 
@@ -768,147 +754,3 @@ void parseCode(int command_code)
 	printf("\n");
 }
 
-void cd (int sock_fd, char* s1)
-{
-	Send_cmd("CWD", s1, sock_fd);
-	Reply_cmd(sock_fd);
-}
-
-void cdup (int sock_fd)
-{
-	Send_cmd("CDUP", NULL, sock_fd);
-	Reply_cmd(sock_fd);
-}
-
-void MKDIR (int sock_fd, char* s1)
-{
-	Send_cmd("MKD", s1, sock_fd);
-	Reply_cmd(sock_fd);
-}
-
-void delete (int sock_fd, char* s1)
-{
-	Send_cmd("DELE", s1, sock_fd);
-	Reply_cmd(sock_fd);
-}
-
-void RMDIR (int sock_fd, char* s1)
-{
-	//Stub??
-}
-
-//Ham send cmd
-int Send_cmd (char* s1, char* s2, int sock_fd)     //s1 is cmd, s2 i path (or filename)
-{
-	char buff_to_send[256];
-	int send_err;
-	
-	if (s1 != NULL)
-	{
-		strcpy(buff_to_send, s1);
-		
-		if (s2 != NULL)
-		{
-			strcat(buff_to_send, " ");
-			strcat(buff_to_send, s2);
-			strcat(buff_to_send, "\r\n");
-			send_err = send(sock_fd, buff_to_send, strlen(buff_to_send), 0);
-		}
-		else
-		{
-			strcat(buff_to_send, " ");
-			strcat(buff_to_send, "\r\n");
-			send_err = send(sock_fd, buff_to_send, strlen(buff_to_send), 0);
-		}
-	}
-	else
-	{
-		strcat(buff_to_send, " ");
-		strcat(buff_to_send, "\r\n");
-		send_err = send(sock_fd, buff_to_send, strlen(buff_to_send), 0);
-	}
-	
-	if (send_err < 0)
-	{
-		printf("Send Error!!!\n");
-	}
-	return send_err;
-}
-
-//Ham nhan reply tu server
-int Reply_cmd(int sock_fd)
-{
-	int code = 0, count = 0;
-	char buff_to_recv[512];
-	
-	count = recv(sock_fd, buff_to_recv, 510, 0);
-	
-	if (count > 0)
-	{
-		sscanf(buff_to_recv, "%d", &code);
-	}
-	else
-	{
-		return 0;
-	}
-	
-	while (1)
-	{
-		if (count <= 0)
-		{
-			break;
-		}
-		buff_to_recv[count] = '\0';
-		printf("Server response: %s", buff_to_recv);
-		count = recv(sock_fd, buff_to_recv, 510, 0);
-	}
-	return code;
-}
-
-//Ham phan tich cau lenh nguoi dung nhap vao
-void Pasre (char s1[256], int sock_fd)  //s1 la lenh nhap tu nguoi dung
-{
-	char temp[256];
-	char* pch;
-	char* cmd;
-	char* path;
-	
-	strcpy(temp, s1);
-	
-	if (strstr(temp, " ") == NULL)
-	{
-		cmd = (char*) malloc (sizeof(temp));
-		strcpy(cmd, temp);
-	}
-	else
-	{
-		pch = strtok(temp, " ");
-		cmd = (char*) malloc (sizeof(pch));
-		strcpy(cmd, pch);
-	
-		pch = strtok(NULL, " ");
-		path = (char*) malloc (sizeof(pch));
-		strcpy(path, pch);
-	}
-	
-	if (strcmp(cmd, "cd") == 0)
-	{
-		cd(sock_fd, path);
-	}
-	if (strcmp(cmd, "cdup") == 0)
-	{
-		cdup(sock_fd);
-	}
-	if (strcmp(cmd, "mkdir") == 0)
-	{
-		MKDIR(sock_fd, path);
-	}
-	if (strcmp(cmd, "delete") == 0)
-	{
-		delete(sock_fd, path);
-	}
-	if (strcmp(cmd, "rmdir") == 0)
-	{
-		RMDIR(sock_fd, path);
-	}
-}
